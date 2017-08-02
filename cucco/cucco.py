@@ -174,7 +174,7 @@ class Cucco(object):
         """
         return ' '.join(text.split())
 
-    def remove_stop_words(self, text, ignore_case=True, language=None):
+    def remove_stop_words(self, text, ignore_case=True, language=None, custom_stop_words=None):
         """Remove stop words.
 
         Stop words are loaded on class instantiation according
@@ -184,6 +184,7 @@ class Cucco(object):
             text: The text to be processed.
             ignore_case: Whether or not to ignore case.
             language: Code of the language to use (defaults to 'en').
+            custom_stop_words: Use a custom stop words list.
 
         Returns:
             The text without stop words.
@@ -191,13 +192,47 @@ class Cucco(object):
         if not language:
             language = self._config.language
 
-        if language not in self.__stop_words:
-            if not self._load_stop_words(language):
-                self._logger.error('No stop words file for the given language')
-                return text
+        if custom_stop_words:
+            stop_words = custom_stop_words
+        else:
+            if language not in self.__stop_words:
+                if not self._load_stop_words(language):
+                    self._logger.error('No stop words file for the given language')
+                    return text
+            stop_words = self.__stop_words[language]
 
-        return ' '.join(word for word in text.split(' ') if (
-            word.lower() if ignore_case else word) not in self.__stop_words[language])
+        if ignore_case:
+            text = text.lower()
+
+        words = text.split(' ')
+        ret_words = []
+        for word in words:
+            if word not in stop_words:
+                ret_words.append(word)
+
+        return ' '.join(ret_words)
+
+    def replace_numbers(self, text, replacement=''):
+        """Remove characters from text.
+
+        Removes custom characters from input text or replaces them
+        with a string if specified.
+
+        Args:
+            text: The text to be processed.
+            replacement: New text that will replace the custom characters.
+
+        Returns:
+            The text without numbers.
+        """
+
+        words = text.split(' ')
+        ret_words = []
+        for word in words:
+            if not word.isnumeric():
+                ret_words.append(word)
+
+        return ' '.join(ret_words)
 
     def replace_characters(self, text, characters, replacement=''):
         """Remove characters from text.
@@ -340,3 +375,20 @@ class Cucco(object):
             The text without URLs.
         """
         return re.sub(regex.URL_REGEX, replacement, text)
+
+    @staticmethod
+    def replace_custom_regex(text, regex, replacement=''):
+        """Replace URLs in text.
+
+        Removes a custom regex from input text or replaces them with a
+        string if specified.
+
+        Args:
+            text: The text to be processed.
+            regex: Custom compiled regex with re.compile()
+            replacement: New text that will replace URLs.
+
+        Returns:
+            The text after replcae the regex.
+        """
+        return re.sub(regex, replacement, text)
